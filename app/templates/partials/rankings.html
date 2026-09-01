@@ -1,0 +1,74 @@
+{% macro server_table(servers, is_new=false) %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Server</th>
+        <th scope="col">Specifications</th>
+        <th scope="col">Current stock</th>
+        <th scope="col">Price</th>
+        <th scope="col">Availability</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in servers %}
+      <tr>
+        <td data-label="Server">
+          <a class="server-name" href="/servers/{{ item.server_type.id }}?timeframe={{ filters.timeframe }}{% if filters.zone %}&zone={{ filters.zone }}{% elif filters.region %}&region={{ filters.region }}{% endif %}">{{ item.server_type.name }}</a>
+          <span class="category">{{ category_label(item.server_type.commercial_range) }}</span>
+          {% if is_new %}<span class="new-badge">New</span>{% endif %}
+        </td>
+        <td data-label="Specifications">
+          <div class="spec-line"><strong>{{ item.server_type.total_cores }}</strong> cores · <strong>{{ item.server_type.ram_bytes|bytes }}</strong> RAM</div>
+          <div class="muted">{{ item.server_type.storage_bytes|bytes }} {{ item.server_type.storage_types|upper }}{% if item.server_type.has_gpu %} · GPU{% endif %}</div>
+        </td>
+        <td data-label="Current stock">
+          <div class="stock-list">
+          {% for stock in item.stocks %}
+            <span class="stock stock-{{ 'available' if stock.enabled and stock.stock == 'available' else 'low' if stock.stock == 'low' else 'empty' }}">
+              {{ stock.zone }} · {{ stock.stock }}
+            </span>
+          {% else %}<span class="muted">No active locations</span>{% endfor %}
+          </div>
+        </td>
+        <td data-label="Price">
+          <strong>{{ money(item.price.hourly_currency, item.price.hourly_nanos) }}/h</strong>
+          <span class="muted price-monthly">{{ money(item.price.monthly_currency, item.price.monthly_nanos) }}/mo</span>
+        </td>
+        <td data-label="Availability">
+          {% if item.availability_percent is not none %}
+          <div class="score"><strong>{{ '%.1f'|format(item.availability_percent) }}%</strong><span>{{ item.available_samples }}/{{ item.valid_samples }} {% if filters.zone %}samples{% else %}zone-hours{% endif %}</span></div>
+          <div class="meter" role="meter" aria-label="Availability" aria-valuenow="{{ item.availability_percent }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ item.availability_percent }}%"></span></div>
+          <small class="muted">{{ '%.0f'|format(item.coverage_percent) }}% collection coverage</small>
+          {% else %}<span class="muted">No valid observations</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+<article class="region-block">
+  <div class="region-heading">
+    <div>
+      <p class="eyebrow">Combined availability</p>
+      <h2>{{ results.label }}</h2>
+    </div>
+    <span>{{ results.ranked|length }} ranked configuration{% if results.ranked|length != 1 %}s{% endif %}</span>
+  </div>
+  {% if results.ranked %}
+    {{ server_table(results.ranked) }}
+  {% elif not results.new %}
+    <div class="empty-state">
+      <h3>No matching servers yet</h3>
+      <p>Adjust the filters or wait for the first successful hourly collection.</p>
+    </div>
+  {% endif %}
+  {% if results.new %}
+  <details class="new-servers" {% if not results.ranked %}open{% endif %}>
+    <summary>New configurations awaiting 24 hours of samples ({{ results.new|length }})</summary>
+    {{ server_table(results.new, true) }}
+  </details>
+  {% endif %}
+</article>

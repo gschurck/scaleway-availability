@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Historical availability of Scaleway Elastic Metal servers">
+    <title>{% block title %}Metal Availability{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+    <script src="{{ url_for('static', path='/htmx.min.js') }}" defer></script>
+  </head>
+  <body hx-boost="true">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Metal Availability home">
+        <span class="brand-mark" aria-hidden="true">M</span>
+        <span>
+          <strong>Metal Availability</strong>
+          <small>Scaleway Elastic Metal history</small>
+        </span>
+      </a>
+      <a class="status-link" href="/healthz" hx-boost="false">System status</a>
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+    <footer>
+      Independent availability tracker using the Scaleway API. Times are shown in UTC.
+    </footer>
+  </body>
+</html>

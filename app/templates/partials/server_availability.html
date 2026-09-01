@@ -1,0 +1,96 @@
+<section id="availability-data" class="availability-data" aria-live="polite">
+  <div class="availability-toolbar">
+    <div>
+      <p class="eyebrow">Historical availability</p>
+      <h2>Availability data</h2>
+    </div>
+    <nav class="segmented" aria-label="Date range">
+      {% for value, label in [('7d', '7 days'), ('30d', '30 days'), ('all', 'All')] %}
+      <a class="{% if timeframe == value %}active{% endif %}"
+         href="?timeframe={{ value }}{% if selected_region %}&region={{ selected_region }}{% endif %}{% if selected_zone %}&zone={{ selected_zone }}{% endif %}"
+         hx-get="?timeframe={{ value }}{% if selected_region %}&region={{ selected_region }}{% endif %}{% if selected_zone %}&zone={{ selected_zone }}{% endif %}"
+         hx-target="#availability-data"
+         hx-swap="outerHTML"
+         hx-push-url="true"
+         {% if timeframe == value %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <section class="stat-grid" aria-label="Regional availability">
+    {% for item in stats %}
+    <a class="stat-card{% if item.region == selected_region %} stat-card-active{% endif %}" href="?timeframe={{ timeframe }}&region={{ item.region }}">
+      <span>{{ region_label(item.region) }}</span>
+      <strong>{% if item.availability_percent is not none %}{{ '%.1f'|format(item.availability_percent) }}%{% else %}—{% endif %}</strong>
+      <small>{{ item.valid_samples }} valid zone-hours · {{ '%.0f'|format(item.coverage_percent) }}% coverage</small>
+    </a>
+    {% endfor %}
+  </section>
+
+  <section class="chart-card">
+    <div class="chart-heading">
+      <div>
+        <p class="eyebrow">Availability history</p>
+        <h2>{{ region_label(selected_region) if selected_region else 'History' }}</h2>
+      </div>
+    </div>
+    {% if timeline %}
+    <div class="timeline" role="img" aria-label="Availability timeline. Green is available, amber is partial, red is unavailable, and gray is unknown.">
+      {% for point in timeline %}
+      <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
+      {% endfor %}
+    </div>
+    <div class="legend"><span class="available">All zones available</span><span class="partial">Some zones available</span><span class="unavailable">Unavailable</span><span class="unknown">Unknown</span></div>
+    {% else %}
+    <div class="empty-state"><h3>No history for this period</h3><p>The timeline will appear after successful hourly collections.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="zone-history-section" aria-labelledby="zone-history-title">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Zone breakdown</p>
+        <h2 id="zone-history-title">Availability by zone</h2>
+      </div>
+      <span>{{ region_label(selected_region) }}</span>
+    </div>
+    <div class="zone-history-grid">
+      {% for item in zone_histories %}
+      <article class="zone-history-card">
+        <header>
+          <div>
+            <h3>{{ item.zone }}</h3>
+            {% set active_stock = item.stats.stocks|selectattr('active')|first %}
+            {% if active_stock %}
+            <span class="stock stock-{{ 'available' if active_stock.enabled and active_stock.stock == 'available' else 'low' if active_stock.stock == 'low' else 'empty' }}">
+              {{ active_stock.stock }} now
+            </span>
+            {% elif item.stats.stocks %}
+            <span class="stock stock-empty">Inactive offer</span>
+            {% else %}
+            <span class="muted">Not offered in this zone</span>
+            {% endif %}
+          </div>
+          <div class="zone-score">
+            <strong>{% if item.stats.availability_percent is not none %}{{ '%.1f'|format(item.stats.availability_percent) }}%{% else %}—{% endif %}</strong>
+            <small>{{ item.stats.valid_samples }} samples</small>
+          </div>
+        </header>
+        {% if item.timeline %}
+        <div class="zone-timeline" role="img" aria-label="{{ item.zone }} availability history">
+          {% for point in item.timeline %}
+          <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
+          {% endfor %}
+        </div>
+        <div class="zone-meta">
+          <span>{{ item.stats.available_samples }}/{{ item.stats.valid_samples }} available observations</span>
+          <span>{{ '%.0f'|format(item.stats.coverage_percent) }}% coverage</span>
+        </div>
+        {% else %}
+        <div class="zone-empty">No availability history collected for this zone.</div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</section>

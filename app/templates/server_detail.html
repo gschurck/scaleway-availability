@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ server.name }} availability{% endblock %}
+{% block content %}
+<div class="detail-shell">
+  <a class="back-link" href="/">← Back to rankings</a>
+  <header class="detail-header">
+    <div>
+      <p class="eyebrow">{{ category_label(server.commercial_range) }}</p>
+      <h1>{{ server.name }}</h1>
+      <p>{{ server.total_cores }} cores · {{ server.total_threads }} threads · {{ server.ram_bytes|bytes }} RAM · {{ server.storage_bytes|bytes }} {{ server.storage_types|upper }}</p>
+    </div>
+    <div class="detail-price">
+      {% set current = stats|selectattr('region', 'equalto', selected_region)|first or stats|first %}
+      {% if current %}
+      <strong>{{ money(current.price.hourly_currency, current.price.hourly_nanos) }}<small>/hour</small></strong>
+      <span>{{ money(current.price.monthly_currency, current.price.monthly_nanos) }}/month</span>
+      {% endif %}
+    </div>
+  </header>
+
+  {% include "partials/server_availability.html" %}
+
+  <section class="detail-grid">
+    <article class="info-card">
+      <p class="eyebrow">Compute</p><h2>Processors</h2>
+      {% for cpu in server.specs_json.get('cpus', []) %}
+      <p><strong>{{ cpu.get('name', 'Unknown CPU') }}</strong><br><span class="muted">{{ cpu.get('core_count', 0) }} cores · {{ cpu.get('thread_count', 0) }} threads · {{ cpu.get('frequency', 0) }} MHz</span></p>
+      {% else %}<p class="muted">No CPU details reported.</p>{% endfor %}
+    </article>
+    <article class="info-card">
+      <p class="eyebrow">Storage</p><h2>Disks</h2>
+      {% for disk in server.specs_json.get('disks', []) %}
+      <p><strong>{{ disk.get('capacity', 0)|bytes }}</strong> <span class="category">{{ disk.get('type', 'unknown')|upper }}</span></p>
+      {% else %}<p class="muted">No disk details reported.</p>{% endfor %}
+    </article>
+    <article class="info-card">
+      <p class="eyebrow">Network</p><h2>Bandwidth</h2>
+      <p><strong>{{ server.public_bandwidth_bps|bandwidth }}</strong><br><span class="muted">Public bandwidth included</span></p>
+    </article>
+    <article class="info-card">
+      <p class="eyebrow">Graphics</p><h2>GPU</h2>
+      {% for gpu in server.specs_json.get('gpus', []) %}
+      <p><strong>{{ gpu.get('name', 'GPU') }}</strong><br><span class="muted">{{ gpu.get('vram', 0)|bytes }} VRAM</span></p>
+      {% else %}<p class="muted">No GPU included.</p>{% endfor %}
+    </article>
+  </section>
+</div>
+{% endblock %}

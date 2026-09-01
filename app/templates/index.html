@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Elastic Metal availability{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Historical stock intelligence</p>
+    <h1>Find the Elastic Metal<br>that is actually available.</h1>
+    <p class="lede">Hourly API observations, ranked by reliable full-stock availability across every region.</p>
+  </div>
+  <div class="freshness{% if stale %} freshness-stale{% endif %}" role="status">
+    <span class="pulse"></span>
+    <div>
+      <strong>{% if stale %}Data is stale{% else %}Data is current{% endif %}</strong>
+      <small>
+        {% if latest_success %}Last successful check {{ latest_success.strftime('%d %b %Y, %H:%M UTC') }}
+        {% else %}Waiting for the first successful collection{% endif %}
+      </small>
+    </div>
+  </div>
+</section>
+
+{% if stale %}
+<div class="alert" role="alert">
+  Availability data has not refreshed in the expected two-hour window. Existing history is still shown, but current stock may have changed.
+</div>
+{% endif %}
+
+<section class="filter-panel" aria-labelledby="filters-title">
+  <div class="filter-heading">
+    <div>
+      <p class="eyebrow">Narrow the catalog</p>
+      <h2 id="filters-title">Filters</h2>
+    </div>
+    <button class="text-button" type="reset" form="ranking-filters" onclick="window.location='/'">Reset all</button>
+  </div>
+  <form id="ranking-filters"
+        class="filters"
+        action="/"
+        method="get"
+        hx-get="/partials/rankings"
+        hx-target="#rankings"
+        hx-push-url="true"
+        hx-trigger="input delay:300ms">
+    <label>
+      <span>Timeframe</span>
+      <select name="timeframe">
+        <option value="7d" {% if filters.timeframe == '7d' %}selected{% endif %}>Last 7 days</option>
+        <option value="30d" {% if filters.timeframe == '30d' %}selected{% endif %}>Last 30 days</option>
+        <option value="all" {% if filters.timeframe == 'all' %}selected{% endif %}>All history</option>
+      </select>
+    </label>
+    <label>
+      <span>Region</span>
+      <select name="region">
+        <option value="">All regions</option>
+        {% for value in ['fr-par', 'nl-ams', 'pl-waw'] %}
+        <option value="{{ value }}" {% if filters.region == value %}selected{% endif %}>{{ region_label(value) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Zone</span>
+      <select name="zone">
+        <option value="">All zones</option>
+        {% for value in zones %}
+        <option value="{{ value }}" {% if filters.zone == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Category</span>
+      <select name="category">
+        <option value="">All categories</option>
+        {% for value, label in categories %}
+        <option value="{{ value }}" {% if filters.category == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Minimum cores</span>
+      <input name="min_cores" type="number" min="1" step="1" value="{{ filters.min_cores or '' }}" placeholder="Any">
+    </label>
+    <label>
+      <span>Minimum RAM (GiB)</span>
+      <input name="min_ram_gb" type="number" min="1" step="1" value="{{ filters.min_ram_gb or '' }}" placeholder="Any">
+    </label>
+    <label>
+      <span>Disk type</span>
+      <select name="disk_type">
+        <option value="">Any disk</option>
+        {% for value, label in [('nvme', 'NVMe'), ('ssd', 'SSD'), ('sata', 'SATA'), ('hdd', 'HDD')] %}
+        <option value="{{ value }}" {% if filters.disk_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="range-label">
+      {% set storage_slider_max = [filter_bounds.storage_gb_max, filters.min_storage_gb or 0]|max %}
+      <span class="range-heading">
+        <span>Minimum storage</span>
+        <output for="min-storage-range">{% if filters.min_storage_gb %}{{ filters.min_storage_gb }} GiB{% else %}Any{% endif %}</output>
+      </span>
+      <input id="min-storage-range"
+             name="min_storage_gb"
+             type="range"
+             min="0"
+             max="{{ storage_slider_max }}"
+             step="1"
+             value="{{ filters.min_storage_gb or 0 }}"
+             oninput="this.previousElementSibling.querySelector('output').value = this.value === '0' ? 'Any' : this.value + ' GiB'">
+    </label>
+    <label>
+      <span>GPU</span>
+      <select name="gpu">
+        <option value="any" {% if filters.gpu == 'any' %}selected{% endif %}>Any</option>
+        <option value="yes" {% if filters.gpu == 'yes' %}selected{% endif %}>Required</option>
+        <option value="no" {% if filters.gpu == 'no' %}selected{% endif %}>No GPU</option>
+      </select>
+    </label>
+    <label class="range-label">
+      {% set price_slider_max = [filter_bounds.hourly_price_eur_max, (filters.max_hourly_price_eur or 0)|float]|max %}
+      <span class="range-heading">
+        <span>Maximum hourly price</span>
+        <output for="max-price-range">€{{ '%.2f'|format((filters.max_hourly_price_eur or filter_bounds.hourly_price_eur_max)|float) }}/h</output>
+      </span>
+      <input id="max-price-range"
+             name="max_hourly_price_eur"
+             type="range"
+             min="0"
+             max="{{ price_slider_max }}"
+             step="0.01"
+             value="{{ filters.max_hourly_price_eur or filter_bounds.hourly_price_eur_max }}"
+             oninput="this.previousElementSibling.querySelector('output').value = '€' + Number(this.value).toFixed(2) + '/h'">
+    </label>
+    <label class="range-label">
+      {% set monthly_price_slider_max = [filter_bounds.monthly_price_eur_max, (filters.max_monthly_price_eur or 0)|float]|max %}
+      <span class="range-heading">
+        <span>Maximum monthly price</span>
+        <output for="max-monthly-price-range">{% if filters.max_monthly_price_eur %}€{{ '%.2f'|format(filters.max_monthly_price_eur|float) }}/mo{% else %}Any{% endif %}</output>
+      </span>
+      <input name="max_monthly_price_eur" type="hidden" value="{{ filters.max_monthly_price_eur or '' }}">
+      <input id="max-monthly-price-range"
+             type="range"
+             min="0"
+             max="{{ monthly_price_slider_max }}"
+             step="1"
+             value="{{ filters.max_monthly_price_eur or monthly_price_slider_max }}"
+             oninput="this.previousElementSibling.value = this.value === this.max ? '' : this.value; this.parentElement.querySelector('output').value = this.value === this.max ? 'Any' : '€' + Number(this.value).toFixed(2) + '/mo'">
+    </label>
+    <label class="checkbox-label">
+      <input name="include_inactive" type="checkbox" value="true" {% if filters.include_inactive %}checked{% endif %}>
+      <span>Include inactive offers</span>
+    </label>
+  </form>
+</section>
+
+<section id="rankings" class="rankings" aria-live="polite" aria-busy="false">
+  {% include "partials/rankings.html" %}
+</section>
+{% endblock %}

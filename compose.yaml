@@ -1,0 +1,17 @@
+services:
+  dashboard:
+    build: .
+    restart: unless-stopped
+    environment:
+      SCW_SECRET_KEY: ${SCW_SECRET_KEY:?Set SCW_SECRET_KEY before starting}
+      DATABASE_URL: sqlite+aiosqlite:////data/availability.db
+      ENABLE_SCHEDULER: "true"
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - availability-data:/data
+
+volumes:
+  availability-data:
+
