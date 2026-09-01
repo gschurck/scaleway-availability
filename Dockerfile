@@ -1,9 +1,13 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
+ENV DATABASE_URL=sqlite+aiosqlite:////data/availability.db
+
 WORKDIR /app
 
 COPY . .
 RUN uv sync --frozen --no-dev
+
+RUN mkdir -p /data && chmod 0777 /data
 
 EXPOSE 8000
 
