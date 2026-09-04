@@ -64,6 +64,7 @@ class RankingFilters:
     min_ram_gb: int | None = None
     disk_type: str | None = None
     min_storage_gb: int | None = None
+    min_availability_percent: int | None = None
     gpu: str = "any"
     max_hourly_price_eur: str | None = None
     max_monthly_price_eur: str | None = None
@@ -125,6 +126,8 @@ class ZoneHistory:
 
 @dataclass(frozen=True)
 class FilterBounds:
+    cores_max: int
+    ram_gb_max: int
     storage_gb_max: int
     hourly_price_eur_max: int
     monthly_price_eur_max: int
@@ -146,6 +149,8 @@ class DashboardService:
         return [(value, category_label(value)) for value in values]
 
     async def filter_bounds(self, session: AsyncSession) -> FilterBounds:
+        cores = await session.scalar(select(func.max(ServerType.total_cores))) or 0
+        ram_bytes = await session.scalar(select(func.max(ServerType.ram_bytes))) or 0
         storage_bytes = await session.scalar(select(func.max(ServerType.storage_bytes))) or 0
         hourly_price_nanos = (
             await session.scalar(select(func.max(OfferLocation.hourly_price_nanos))) or 0
@@ -154,6 +159,8 @@ class DashboardService:
             await session.scalar(select(func.max(OfferLocation.monthly_price_nanos))) or 0
         )
         return FilterBounds(
+            cores_max=max(1, cores),
+            ram_gb_max=max(1, ceil(ram_bytes / 1024**3)),
             storage_gb_max=max(1, ceil(storage_bytes / 1024**3)),
             hourly_price_eur_max=max(1, ceil(hourly_price_nanos / NANOS_PER_UNIT)),
             monthly_price_eur_max=max(1, ceil(monthly_price_nanos / NANOS_PER_UNIT)),
@@ -165,6 +172,13 @@ class DashboardService:
         servers = [
             await self._rank_server_scope(session, server, filters, zones) for server in candidates
         ]
+        if filters.min_availability_percent is not None:
+            servers = [
+                item
+                for item in servers
+                if item.availability_percent is not None
+                and item.availability_percent >= filters.min_availability_percent
+            ]
         if filters.sort_by == "price":
             servers.sort(
                 key=lambda item: (

@@ -159,7 +159,7 @@ h1 { font-size: clamp(42px, 5vw, 72px); letter-spacing: -.055em; line-height: .9
 .filters input, .filters select { appearance: none; background: var(--filter-control); border: 1px solid var(--filter-border); border-radius: 9px; color: white; height: 42px; outline: none; padding: 0 11px; width: 100%; }
 .filters select { background-image: linear-gradient(45deg, transparent 50%, var(--filter-accent) 50%), linear-gradient(135deg, var(--filter-accent) 50%, transparent 50%); background-position: calc(100% - 15px) 18px, calc(100% - 10px) 18px; background-repeat: no-repeat; background-size: 5px 5px, 5px 5px; padding-right: 28px; }
 .filters input:focus, .filters select:focus { border-color: var(--filter-accent); box-shadow: 0 0 0 3px rgba(216, 185, 255, .18); }
-.filters .range-label { grid-column: span 2; }
+.filters .range-label { grid-column: span 1; }
 .filters .range-heading { align-items: center; display: flex; justify-content: space-between; }
 .filters .range-heading output { color: white; font-size: 12px; letter-spacing: 0; text-transform: none; }
 .filters input[type="range"] { appearance: none; background: transparent; border: 0; height: 42px; padding: 0; }
@@ -291,7 +291,6 @@ footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px
 
 @media (max-width: 480px) {
   .filters { grid-template-columns: 1fr; }
-  .filters .range-label { grid-column: span 1; }
   .filter-panel { border-radius: 16px; padding: 20px; }
 }
 

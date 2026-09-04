@@ -31,18 +31,6 @@ async def get_session(
         yield session
 
 
-def optional_positive_int(value: str | None, label: str) -> int | None:
-    if value is None or not value.strip():
-        return None
-    try:
-        parsed = int(value)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=f"{label} must be a whole number") from exc
-    if parsed < 1:
-        raise HTTPException(status_code=422, detail=f"{label} must be at least 1")
-    return parsed
-
-
 def optional_nonnegative_int(value: str | None, label: str) -> int | None:
     if value is None or not value.strip():
         return None
@@ -55,6 +43,13 @@ def optional_nonnegative_int(value: str | None, label: str) -> int | None:
     return parsed or None
 
 
+def optional_percentage(value: str | None, label: str) -> int | None:
+    parsed = optional_nonnegative_int(value, label)
+    if parsed is not None and parsed > 100:
+        raise HTTPException(status_code=422, detail=f"{label} cannot exceed 100")
+    return parsed
+
+
 def parse_filters(
     timeframe: Annotated[Literal["7d", "30d", "all"], Query()] = "30d",
     sort_by: Annotated[SortBy, Query()] = "availability",
@@ -64,6 +59,7 @@ def parse_filters(
     min_ram_gb: Annotated[str | None, Query()] = None,
     disk_type: Annotated[str | None, Query()] = None,
     min_storage_gb: Annotated[str | None, Query()] = None,
+    min_availability_percent: Annotated[str | None, Query()] = None,
     gpu: Annotated[Literal["any", "yes", "no"], Query()] = "any",
     max_hourly_price_eur: Annotated[str | None, Query()] = None,
     max_monthly_price_eur: Annotated[str | None, Query()] = None,
@@ -74,10 +70,13 @@ def parse_filters(
         sort_by=sort_by,
         region=region or None,
         zone=zone or None,
-        min_cores=optional_positive_int(min_cores, "Minimum cores"),
-        min_ram_gb=optional_positive_int(min_ram_gb, "Minimum RAM"),
+        min_cores=optional_nonnegative_int(min_cores, "Minimum cores"),
+        min_ram_gb=optional_nonnegative_int(min_ram_gb, "Minimum RAM"),
         disk_type=disk_type or None,
         min_storage_gb=optional_nonnegative_int(min_storage_gb, "Minimum storage"),
+        min_availability_percent=optional_percentage(
+            min_availability_percent, "Minimum availability"
+        ),
         gpu=gpu,
         max_hourly_price_eur=max_hourly_price_eur or None,
         max_monthly_price_eur=max_monthly_price_eur or None,

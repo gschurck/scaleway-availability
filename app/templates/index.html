@@ -56,6 +56,20 @@
         <option value="all" {% if filters.timeframe == 'all' %}selected{% endif %}>All history</option>
       </select>
     </label>
+    <label class="range-label">
+      <span class="range-heading">
+        <span>Minimum availability</span>
+        <output for="min-availability-range">{% if filters.min_availability_percent %}{{ filters.min_availability_percent }}%{% else %}Any{% endif %}</output>
+      </span>
+      <input id="min-availability-range"
+             name="min_availability_percent"
+             type="range"
+             min="0"
+             max="100"
+             step="1"
+             value="{{ filters.min_availability_percent or 0 }}"
+             oninput="this.previousElementSibling.querySelector('output').value = this.value === '0' ? 'Any' : this.value + '%'">
+    </label>
     <label>
       <span>Region</span>
       <select name="region">
@@ -83,13 +97,35 @@
         {% endfor %}
       </select>
     </label>
-    <label>
-      <span>Minimum cores</span>
-      <input name="min_cores" type="number" min="1" step="1" value="{{ filters.min_cores or '' }}" placeholder="Any">
+    <label class="range-label">
+      {% set cores_slider_max = [filter_bounds.cores_max, filters.min_cores or 0]|max %}
+      <span class="range-heading">
+        <span>Minimum cores</span>
+        <output for="min-cores-range">{% if filters.min_cores %}{{ filters.min_cores }}{% else %}Any{% endif %}</output>
+      </span>
+      <input id="min-cores-range"
+             name="min_cores"
+             type="range"
+             min="0"
+             max="{{ cores_slider_max }}"
+             step="1"
+             value="{{ filters.min_cores or 0 }}"
+             oninput="this.previousElementSibling.querySelector('output').value = this.value === '0' ? 'Any' : this.value">
     </label>
-    <label>
-      <span>Minimum RAM (GiB)</span>
-      <input name="min_ram_gb" type="number" min="1" step="1" value="{{ filters.min_ram_gb or '' }}" placeholder="Any">
+    <label class="range-label">
+      {% set ram_slider_max = [filter_bounds.ram_gb_max, filters.min_ram_gb or 0]|max %}
+      <span class="range-heading">
+        <span>Minimum RAM</span>
+        <output for="min-ram-range">{% if filters.min_ram_gb %}{{ filters.min_ram_gb }} GiB{% else %}Any{% endif %}</output>
+      </span>
+      <input id="min-ram-range"
+             name="min_ram_gb"
+             type="range"
+             min="0"
+             max="{{ ram_slider_max }}"
+             step="1"
+             value="{{ filters.min_ram_gb or 0 }}"
+             oninput="this.previousElementSibling.querySelector('output').value = this.value === '0' ? 'Any' : this.value + ' GiB'">
     </label>
     <label>
       <span>Disk type</span>

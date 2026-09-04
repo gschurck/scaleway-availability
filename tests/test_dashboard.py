@@ -140,6 +140,8 @@ async def test_rankings_require_24_samples_and_apply_category_price_filters(
     assert results.ranked[0].valid_samples == 48
     assert results.ranked[0].price.monthly_nanos == 799_000_000_000
     assert categories == [("beryllium", "Beryllium")]
+    assert bounds.cores_max == 32
+    assert bounds.ram_gb_max == 128
     assert bounds.storage_gb_max == 1920
     assert bounds.hourly_price_eur_max == 2
     assert bounds.monthly_price_eur_max == 799
@@ -234,6 +236,12 @@ async def test_rankings_can_sort_by_availability_or_price(settings, database) ->
         by_price = await dashboard.rankings(
             session, RankingFilters(region="fr-par", sort_by="price")
         )
+        minimum_availability = await dashboard.rankings(
+            session, RankingFilters(region="fr-par", min_availability_percent=25)
+        )
+        too_high_availability = await dashboard.rankings(
+            session, RankingFilters(region="fr-par", min_availability_percent=50)
+        )
 
     assert [item.server_type.id for item in by_availability.ranked] == [
         available_server.id,
@@ -243,6 +251,10 @@ async def test_rankings_can_sort_by_availability_or_price(settings, database) ->
         cheaper_server.id,
         available_server.id,
     ]
+    assert [item.server_type.id for item in minimum_availability.ranked] == [
+        available_server.id
+    ]
+    assert too_high_availability.ranked == []
 
 
 async def test_all_regions_returns_each_server_once_with_combined_availability(
@@ -305,6 +317,7 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
                 "category": "beryllium",
                 "timeframe": "30d",
                 "sort_by": "price",
+                "min_availability_percent": "25",
             },
             headers={"HX-Request": "true"},
         )
@@ -325,7 +338,10 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
             },
             headers={"HX-Request": "true"},
         )
-        invalid_filter_partial = await client.get("/partials/rankings", params={"min_cores": "0"})
+        invalid_filter_partial = await client.get("/partials/rankings", params={"min_cores": "-1"})
+        invalid_availability_partial = await client.get(
+            "/partials/rankings", params={"min_availability_percent": "101"}
+        )
         zero_storage_partial = await client.get(
             "/partials/rankings", params={"min_storage_gb": "0"}
         )
@@ -353,10 +369,15 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     assert 'name="sort_by"' in homepage.text
     assert "Availability — highest first" in homepage.text
     assert "Price — lowest first" in homepage.text
+    assert 'name="min_availability_percent"' in homepage.text
+    assert 'id="min-availability-range"' in homepage.text
+    assert "Minimum availability" in homepage.text
     assert "include_inactive" not in homepage.text
     assert "Include inactive offers" not in homepage.text
     assert "Apply filters" not in homepage.text
     assert 'name="min_storage_gb"' in homepage.text
+    assert 'id="min-cores-range"' in homepage.text
+    assert 'id="min-ram-range"' in homepage.text
     assert 'id="min-storage-range"' in homepage.text
     assert 'type="range"' in homepage.text
     assert 'max="1920"' in homepage.text
@@ -372,6 +393,7 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     assert empty_filter_partial.status_code == 200
     assert "EM-BERYLLIUM-1" in empty_filter_partial.text
     assert invalid_filter_partial.status_code == 422
+    assert invalid_availability_partial.status_code == 422
     assert zero_storage_partial.status_code == 200
     assert detail.status_code == 200
     assert "Availability history" in detail.text
