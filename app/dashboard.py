@@ -22,6 +22,7 @@ from app.models import (
 from app.scaleway import NANOS_PER_UNIT
 
 Timeframe = Literal["7d", "30d", "all"]
+SortBy = Literal["availability", "price"]
 
 
 def ensure_utc(value: datetime | None) -> datetime | None:
@@ -56,6 +57,7 @@ def price_filter_nanos(value: str | None) -> int | None:
 @dataclass(frozen=True)
 class RankingFilters:
     timeframe: Timeframe = "30d"
+    sort_by: SortBy = "availability"
     region: str | None = None
     zone: str | None = None
     min_cores: int | None = None
@@ -164,13 +166,23 @@ class DashboardService:
         servers = [
             await self._rank_server_scope(session, server, filters, zones) for server in candidates
         ]
-        servers.sort(
-            key=lambda item: (
-                -(item.availability_percent if item.availability_percent is not None else -1),
-                -item.valid_samples,
-                item.server_type.name.lower(),
+        if filters.sort_by == "price":
+            servers.sort(
+                key=lambda item: (
+                    item.price.hourly_nanos is None,
+                    item.price.hourly_nanos if item.price.hourly_nanos is not None else 0,
+                    -(item.availability_percent or 0),
+                    item.server_type.name.lower(),
+                )
             )
-        )
+        else:
+            servers.sort(
+                key=lambda item: (
+                    -(item.availability_percent if item.availability_percent is not None else -1),
+                    -item.valid_samples,
+                    item.server_type.name.lower(),
+                )
+            )
         if filters.zone:
             scope = filters.zone
             label = filters.zone

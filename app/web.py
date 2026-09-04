@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dashboard import DashboardService, RankingFilters, Timeframe
+from app.dashboard import DashboardService, RankingFilters, SortBy, Timeframe
 from app.db import Database
 from app.locations import category_label, region_label
 
@@ -57,6 +57,7 @@ def optional_nonnegative_int(value: str | None, label: str) -> int | None:
 
 def parse_filters(
     timeframe: Annotated[Literal["7d", "30d", "all"], Query()] = "30d",
+    sort_by: Annotated[SortBy, Query()] = "availability",
     region: Annotated[str | None, Query()] = None,
     zone: Annotated[str | None, Query()] = None,
     min_cores: Annotated[str | None, Query()] = None,
@@ -71,6 +72,7 @@ def parse_filters(
 ) -> RankingFilters:
     return RankingFilters(
         timeframe=timeframe,
+        sort_by=sort_by,
         region=region or None,
         zone=zone or None,
         min_cores=optional_positive_int(min_cores, "Minimum cores"),

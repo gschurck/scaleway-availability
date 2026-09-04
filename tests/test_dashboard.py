@@ -171,6 +171,80 @@ async def test_server_with_23_samples_is_listed_as_new(settings, database) -> No
     assert len(results.new) == 1
 
 
+async def test_rankings_can_sort_by_availability_or_price(settings, database) -> None:
+    available_server = await seed_ranked_server(database)
+    async with database.session_factory() as session:
+        runs = list(
+            (
+                await session.scalars(
+                    select(CollectionRun).order_by(CollectionRun.scheduled_at)
+                )
+            ).all()
+        )
+        cheaper_server = ServerType(
+            name="EM-CHEAPER",
+            hardware_fingerprint="b" * 64,
+            commercial_range="beryllium",
+            total_cores=16,
+            total_threads=32,
+            ram_bytes=64 * 1024**3,
+            storage_bytes=960 * 1024**3,
+            storage_types="nvme",
+            has_gpu=False,
+            public_bandwidth_bps=1_000_000_000,
+            specs_json={},
+        )
+        session.add(cheaper_server)
+        await session.flush()
+        location = OfferLocation(
+            server_type_id=cheaper_server.id,
+            api_offer_id="offer-cheaper",
+            zone="fr-par-1",
+            region="fr-par",
+            active=True,
+            enabled=True,
+            current_stock="empty",
+            hourly_currency="EUR",
+            hourly_price_nanos=500_000_000,
+            monthly_currency="EUR",
+            monthly_price_nanos=300_000_000_000,
+            first_seen_at=runs[0].scheduled_at,
+            last_seen_at=runs[-1].scheduled_at,
+        )
+        session.add(location)
+        await session.flush()
+        session.add_all(
+            AvailabilityObservation(
+                collection_run_id=run.id,
+                offer_location_id=location.id,
+                observed_at=run.scheduled_at,
+                stock="empty",
+                enabled=True,
+                is_available=False,
+            )
+            for run in runs
+        )
+        await session.commit()
+
+    dashboard = DashboardService(settings)
+    async with database.session_factory() as session:
+        by_availability = await dashboard.rankings(
+            session, RankingFilters(region="fr-par", sort_by="availability")
+        )
+        by_price = await dashboard.rankings(
+            session, RankingFilters(region="fr-par", sort_by="price")
+        )
+
+    assert [item.server_type.id for item in by_availability.ranked] == [
+        available_server.id,
+        cheaper_server.id,
+    ]
+    assert [item.server_type.id for item in by_price.ranked] == [
+        cheaper_server.id,
+        available_server.id,
+    ]
+
+
 async def test_all_regions_returns_each_server_once_with_combined_availability(
     settings, database
 ) -> None:
@@ -226,7 +300,12 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
         homepage = await client.get("/")
         partial = await client.get(
             "/partials/rankings",
-            params={"region": "fr-par", "category": "beryllium", "timeframe": "30d"},
+            params={
+                "region": "fr-par",
+                "category": "beryllium",
+                "timeframe": "30d",
+                "sort_by": "price",
+            },
             headers={"HX-Request": "true"},
         )
         empty_filter_partial = await client.get(
@@ -271,6 +350,9 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     assert '<body hx-boost="true">' in homepage.text
     assert 'href="/healthz" hx-boost="false"' in homepage.text
     assert 'hx-trigger="input delay:300ms"' in homepage.text
+    assert 'name="sort_by"' in homepage.text
+    assert "Availability — highest first" in homepage.text
+    assert "Price — lowest first" in homepage.text
     assert "Apply filters" not in homepage.text
     assert 'name="min_storage_gb"' in homepage.text
     assert 'id="min-storage-range"' in homepage.text

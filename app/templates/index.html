@@ -42,6 +42,13 @@
         hx-push-url="true"
         hx-trigger="input delay:300ms">
     <label>
+      <span>Sort by</span>
+      <select name="sort_by">
+        <option value="availability" {% if filters.sort_by == 'availability' %}selected{% endif %}>Availability — highest first</option>
+        <option value="price" {% if filters.sort_by == 'price' %}selected{% endif %}>Price — lowest first</option>
+      </select>
+    </label>
+    <label>
       <span>Timeframe</span>
       <select name="timeframe">
         <option value="7d" {% if filters.timeframe == '7d' %}selected{% endif %}>Last 7 days</option>
