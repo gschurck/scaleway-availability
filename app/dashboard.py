@@ -68,7 +68,6 @@ class RankingFilters:
     max_hourly_price_eur: str | None = None
     max_monthly_price_eur: str | None = None
     category: str | None = None
-    include_inactive: bool = False
 
 
 @dataclass(frozen=True)
@@ -260,9 +259,9 @@ class DashboardService:
                         timeframe=timeframe,
                         region=selected_region,
                         zone=item_zone,
-                        include_inactive=True,
                     ),
                     selected_region,
+                    include_inactive=True,
                 ),
                 timeline=await self._timeline(
                     session,
@@ -300,8 +299,7 @@ class DashboardService:
         query: Select[tuple[ServerType]] = (
             select(ServerType).join(OfferLocation).where(OfferLocation.zone.in_(zones)).distinct()
         )
-        if not filters.include_inactive:
-            query = query.where(OfferLocation.active.is_(True))
+        query = query.where(OfferLocation.active.is_(True))
         if filters.min_cores is not None:
             query = query.where(ServerType.total_cores >= filters.min_cores)
         if filters.min_ram_gb is not None:
@@ -347,7 +345,7 @@ class DashboardService:
         availability = (available / valid * 100) if valid else None
         coverage = min(100.0, valid / expected * 100) if expected else 0.0
         price, stocks = await self._location_summary(
-            session, server.id, zones, filters.include_inactive
+            session, server.id, zones, include_inactive=False
         )
         return RankedServer(
             server_type=server,
@@ -368,6 +366,8 @@ class DashboardService:
         server: ServerType,
         filters: RankingFilters,
         region: str,
+        *,
+        include_inactive: bool = False,
     ) -> RankedServer:
         cutoff = cutoff_for(filters.timeframe)
         if filters.zone:
@@ -403,7 +403,7 @@ class DashboardService:
             session,
             server.id,
             [filters.zone] if filters.zone else self._region_zones(region),
-            filters.include_inactive,
+            include_inactive,
         )
         return RankedServer(
             server_type=server,

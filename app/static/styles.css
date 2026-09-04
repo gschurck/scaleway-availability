@@ -168,9 +168,6 @@ h1 { font-size: clamp(42px, 5vw, 72px); letter-spacing: -.055em; line-height: .9
 .filters input[type="range"]::-webkit-slider-thumb { appearance: none; background: var(--filter-accent); border: 3px solid var(--purple-deep); border-radius: 50%; cursor: pointer; height: 20px; margin-top: -7px; width: 20px; }
 .filters input[type="range"]::-moz-range-track { background: var(--filter-border); border: 0; border-radius: 99px; height: 6px; }
 .filters input[type="range"]::-moz-range-thumb { background: var(--filter-accent); border: 3px solid var(--purple-deep); border-radius: 50%; cursor: pointer; height: 14px; width: 14px; }
-.filters .checkbox-label { align-items: center; display: flex; gap: 9px; padding-top: 24px; }
-.filters .checkbox-label input { accent-color: var(--purple-bright); height: 18px; width: 18px; }
-.filters .checkbox-label span { margin: 0; text-transform: none; }
 .primary-button { align-self: end; background: #d8b9ff; border: 0; border-radius: 9px; color: var(--purple-deep); cursor: pointer; font-weight: 800; height: 42px; padding: 0 18px; }
 .primary-button:hover { background: #eadcff; }
 
@@ -296,7 +293,6 @@ footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px
   .filters { grid-template-columns: 1fr; }
   .filters .range-label { grid-column: span 1; }
   .filter-panel { border-radius: 16px; padding: 20px; }
-  .filters .checkbox-label { padding-top: 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

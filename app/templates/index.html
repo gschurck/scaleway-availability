@@ -153,10 +153,6 @@
              value="{{ filters.max_monthly_price_eur or monthly_price_slider_max }}"
              oninput="this.previousElementSibling.value = this.value === this.max ? '' : this.value; this.parentElement.querySelector('output').value = this.value === this.max ? 'Any' : '€' + Number(this.value).toFixed(2) + '/mo'">
     </label>
-    <label class="checkbox-label">
-      <input name="include_inactive" type="checkbox" value="true" {% if filters.include_inactive %}checked{% endif %}>
-      <span>Include inactive offers</span>
-    </label>
   </form>
 </section>
 

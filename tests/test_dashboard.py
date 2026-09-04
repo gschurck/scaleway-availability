@@ -353,6 +353,8 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     assert 'name="sort_by"' in homepage.text
     assert "Availability — highest first" in homepage.text
     assert "Price — lowest first" in homepage.text
+    assert "include_inactive" not in homepage.text
+    assert "Include inactive offers" not in homepage.text
     assert "Apply filters" not in homepage.text
     assert 'name="min_storage_gb"' in homepage.text
     assert 'id="min-storage-range"' in homepage.text
@@ -395,7 +397,7 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     await app.state.database.dispose()
 
 
-async def test_inactive_offer_is_hidden_by_default(settings, database) -> None:
+async def test_inactive_offer_is_hidden_from_public_rankings(settings, database) -> None:
     server = await seed_ranked_server(database)
     async with database.session_factory() as session:
         location = await session.scalar(
@@ -403,15 +405,6 @@ async def test_inactive_offer_is_hidden_by_default(settings, database) -> None:
         )
         location.active = False
         await session.commit()
-    dashboard = DashboardService(settings)
-    async with database.session_factory() as session:
-        hidden = await dashboard.rankings(session, RankingFilters(region="fr-par"))
-        visible = await dashboard.rankings(
-            session, RankingFilters(region="fr-par", include_inactive=True)
-        )
-    assert hidden.ranked == []
-    assert len(visible.ranked) == 1
-
     app = create_app(settings)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -420,12 +413,12 @@ async def test_inactive_offer_is_hidden_by_default(settings, database) -> None:
             params={"region": "fr-par"},
             headers={"HX-Request": "true"},
         )
-        visible_response = await client.get(
+        unsupported_filter_response = await client.get(
             "/partials/rankings",
             params={"region": "fr-par", "include_inactive": "true"},
             headers={"HX-Request": "true"},
         )
 
     assert "EM-BERYLLIUM-1" not in hidden_response.text
-    assert "EM-BERYLLIUM-1" in visible_response.text
+    assert "EM-BERYLLIUM-1" not in unsupported_filter_response.text
     await app.state.database.dispose()

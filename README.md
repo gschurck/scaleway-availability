@@ -63,4 +63,4 @@ The scheduler management router supplied by `fastapi-crons` is deliberately not 
 
 Every collection has per-zone status records. Successful zones are committed even if another zone fails. Failed zone checks are unknown and excluded from percentages; a missing offer in a successfully checked zone counts as unavailable. Derived regional observations are `available` when all successfully checked zones are available, `partial` when only some are available, and `unavailable` when none are available.
 
-Collections are idempotent by UTC hour. Re-running an hour replaces that run's observations without duplicating history. Offers missing from a successful catalog response are marked inactive but are not recorded as unavailable, and their history remains queryable through the “Include inactive offers” filter.
+Collections are idempotent by UTC hour. Re-running an hour replaces that run's observations without duplicating history. Offers missing from a successful catalog response are marked inactive but are not recorded as unavailable; their existing history remains visible on server detail pages.

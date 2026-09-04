@@ -68,7 +68,6 @@ def parse_filters(
     max_hourly_price_eur: Annotated[str | None, Query()] = None,
     max_monthly_price_eur: Annotated[str | None, Query()] = None,
     category: Annotated[str | None, Query()] = None,
-    include_inactive: Annotated[bool, Query()] = False,
 ) -> RankingFilters:
     return RankingFilters(
         timeframe=timeframe,
@@ -83,7 +82,6 @@ def parse_filters(
         max_hourly_price_eur=max_hourly_price_eur or None,
         max_monthly_price_eur=max_monthly_price_eur or None,
         category=category or None,
-        include_inactive=include_inactive,
     )
 
 
