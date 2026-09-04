@@ -98,7 +98,13 @@ async def seed_ranked_server(database, *, sample_count: int = 24) -> ServerType:
                     collection_run_id=run.id,
                     offer_location_id=location.id,
                     observed_at=observed_at,
-                    stock="available" if index < sample_count - 4 else "empty",
+                    stock=(
+                        "available"
+                        if index < sample_count - 4
+                        else "low"
+                        if index == sample_count - 1
+                        else "empty"
+                    ),
                     enabled=True,
                     is_available=index < sample_count - 4,
                 )
@@ -245,6 +251,9 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
             "/partials/rankings", params={"min_storage_gb": "0"}
         )
         detail = await client.get(f"/servers/{server.id}?region=fr-par&timeframe=30d")
+        zone_detail = await client.get(
+            f"/servers/{server.id}?zone=fr-par-1&timeframe=30d"
+        )
         detail_timeframe_partial = await client.get(
             f"/servers/{server.id}?region=fr-par&timeframe=7d",
             headers={"HX-Request": "true", "HX-Target": "availability-data"},
@@ -285,7 +294,11 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     assert "fr-par-2" in detail.text
     assert "Not offered in this zone" in detail.text
     assert "timeline-available" in detail.text
+    assert "timeline-low" in detail.text
     assert "timeline-partial" in detail.text
+    assert "timeline-low" in zone_detail.text
+    assert "Low stock" in zone_detail.text
+    assert "low stock" in zone_detail.text
     assert 'id="availability-data"' in detail.text
     assert 'hx-target="#availability-data"' in detail.text
     assert detail_timeframe_partial.status_code == 200

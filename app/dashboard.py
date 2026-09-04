@@ -527,7 +527,11 @@ class DashboardService:
         if not zone:
             return await self._regional_timeline(session, server_type_id, timeframe, region, cutoff)
         query = (
-            select(AvailabilityObservation.observed_at, AvailabilityObservation.is_available)
+            select(
+                AvailabilityObservation.observed_at,
+                AvailabilityObservation.is_available,
+                AvailabilityObservation.stock,
+            )
             .join(OfferLocation)
             .where(
                 OfferLocation.server_type_id == server_type_id,
@@ -543,14 +547,20 @@ class DashboardService:
                 TimelinePoint(
                     timestamp=ensure_utc(row[0]) or datetime.now(UTC),
                     label=(ensure_utc(row[0]) or datetime.now(UTC)).strftime("%d %b %H:%M UTC"),
-                    state="available" if row[1] else "unavailable",
+                    state=(
+                        "available"
+                        if row[1]
+                        else "low"
+                        if row[2] == "low"
+                        else "unavailable"
+                    ),
                     percent=100.0 if row[1] else 0.0,
                 )
                 for row in rows
             ]
 
         daily: dict[datetime, list[str]] = defaultdict(list)
-        for observed_at, value in rows:
+        for observed_at, value, _stock in rows:
             timestamp = ensure_utc(observed_at) or datetime.now(UTC)
             state = "available" if value else "unavailable"
             daily[timestamp.replace(hour=0, minute=0, second=0, microsecond=0)].append(state)

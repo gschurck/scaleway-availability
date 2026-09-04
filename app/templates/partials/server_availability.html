@@ -35,12 +35,16 @@
       </div>
     </div>
     {% if timeline %}
-    <div class="timeline" role="img" aria-label="Availability timeline. Green is available, amber is partial, red is unavailable, and gray is unknown.">
+    <div class="timeline" role="img" aria-label="{% if selected_zone %}Zone availability timeline. Green is available, amber is low stock, red is unavailable, and gray is unknown.{% else %}Availability timeline. Green is available, amber is partial, red is unavailable, and gray is unknown.{% endif %}">
       {% for point in timeline %}
-      <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
+      <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.state == 'low' %}low stock{% elif point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
       {% endfor %}
     </div>
-    <div class="legend"><span class="available">All zones available</span><span class="partial">Some zones available</span><span class="unavailable">Unavailable</span><span class="unknown">Unknown</span></div>
+    <div class="legend">
+      {% if selected_zone %}<span class="available">Available</span><span class="low">Low stock</span>
+      {% else %}<span class="available">All zones available</span><span class="partial">Some zones available</span>{% endif %}
+      <span class="unavailable">Unavailable</span><span class="unknown">Unknown</span>
+    </div>
     {% else %}
     <div class="empty-state"><h3>No history for this period</h3><p>The timeline will appear after successful hourly collections.</p></div>
     {% endif %}
@@ -79,7 +83,7 @@
         {% if item.timeline %}
         <div class="zone-timeline" role="img" aria-label="{{ item.zone }} availability history">
           {% for point in item.timeline %}
-          <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
+          <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.state == 'low' %}low stock{% elif point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
           {% endfor %}
         </div>
         <div class="zone-meta">
