@@ -266,6 +266,8 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
     assert "€799.00/mo" in homepage.text
     assert "Beryllium" in homepage.text
     assert "htmx.min.js" in homepage.text
+    assert "theme.js" in homepage.text
+    assert "data-theme-toggle" in homepage.text
     assert '<body hx-boost="true">' in homepage.text
     assert 'href="/healthz" hx-boost="false"' in homepage.text
     assert 'hx-trigger="input delay:300ms"' in homepage.text
