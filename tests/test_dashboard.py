@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 from sqlalchemy import select
 
 from app.config import Settings
@@ -173,14 +174,74 @@ async def test_server_with_23_samples_is_listed_as_new(settings, database) -> No
     assert len(results.new) == 1
 
 
+@pytest.mark.parametrize("scope", [{}, {"region": "fr-par"}, {"zone": "fr-par-1"}])
+@pytest.mark.parametrize("low_enabled", [True, False])
+async def test_include_low_updates_rankings_and_availability_filter(
+    settings, database, scope, low_enabled
+) -> None:
+    await seed_ranked_server(database)
+    async with database.session_factory() as session:
+        low = await session.scalar(
+            select(AvailabilityObservation).where(AvailabilityObservation.stock == "low")
+        )
+        low.enabled = low_enabled
+        await session.commit()
+        dashboard = DashboardService(settings)
+        strict = await dashboard.rankings(session, RankingFilters(**scope))
+        inclusive = await dashboard.rankings(session, RankingFilters(**scope, include_low=True))
+        threshold = 85 if "zone" in scope else 43
+        filtered = await dashboard.rankings(
+            session,
+            RankingFilters(**scope, include_low=True, min_availability_percent=threshold),
+        )
+        strict_filtered = await dashboard.rankings(
+            session, RankingFilters(**scope, min_availability_percent=threshold)
+        )
+
+    before, after = strict.ranked[0], inclusive.ranked[0]
+    assert before.available_samples == 20
+    assert after.available_samples == 20 + int(low_enabled)
+    assert after.valid_samples == before.valid_samples
+    assert after.coverage_percent == before.coverage_percent
+    assert after.availability_percent == (20 + int(low_enabled)) / before.valid_samples * 100
+    assert bool(filtered.ranked) == low_enabled
+    assert strict_filtered.ranked == []
+
+
+@pytest.mark.parametrize("timeframe", ["7d", "30d", "all"])
+@pytest.mark.parametrize("zone", [None, "fr-par-1"])
+async def test_include_low_updates_detail_stats_and_timelines(
+    settings, database, timeframe, zone
+) -> None:
+    server = await seed_ranked_server(database)
+    dashboard = DashboardService(settings)
+    async with database.session_factory() as session:
+        strict = await dashboard.server_detail(session, server.id, timeframe, "fr-par", zone)
+        inclusive = await dashboard.server_detail(
+            session, server.id, timeframe, "fr-par", zone, include_low=True
+        )
+
+    _, strict_stats, strict_timeline, strict_zones = strict
+    _, stats, timeline, zones = inclusive
+    assert strict_stats[0].available_samples == 20
+    assert stats[0].availability_percent == 21 / 48 * 100
+    assert strict_zones[0].stats.available_samples == 20
+    assert zones[0].stats.availability_percent == 21 / 24 * 100
+    assert timeline[-1].percent > strict_timeline[-1].percent
+    assert zones[0].timeline[-1].percent > strict_zones[0].timeline[-1].percent
+    assert zones[1].stats.availability_percent is None
+    if timeframe != "all":
+        assert timeline[-1].percent == (100 if zone else 50)
+        assert zones[0].timeline[-1].state == "available"
+        assert strict_zones[0].timeline[-1].state == "low"
+
+
 async def test_rankings_can_sort_by_availability_or_price(settings, database) -> None:
     available_server = await seed_ranked_server(database)
     async with database.session_factory() as session:
         runs = list(
             (
-                await session.scalars(
-                    select(CollectionRun).order_by(CollectionRun.scheduled_at)
-                )
+                await session.scalars(select(CollectionRun).order_by(CollectionRun.scheduled_at))
             ).all()
         )
         cheaper_server = ServerType(
@@ -251,9 +312,7 @@ async def test_rankings_can_sort_by_availability_or_price(settings, database) ->
         cheaper_server.id,
         available_server.id,
     ]
-    assert [item.server_type.id for item in minimum_availability.ranked] == [
-        available_server.id
-    ]
+    assert [item.server_type.id for item in minimum_availability.ranked] == [available_server.id]
     assert too_high_availability.ranked == []
 
 
@@ -346,9 +405,7 @@ async def test_public_pages_render_monthly_price_categories_and_htmx_history(
             "/partials/rankings", params={"min_storage_gb": "0"}
         )
         detail = await client.get(f"/servers/{server.id}?region=fr-par&timeframe=30d")
-        zone_detail = await client.get(
-            f"/servers/{server.id}?zone=fr-par-1&timeframe=30d"
-        )
+        zone_detail = await client.get(f"/servers/{server.id}?zone=fr-par-1&timeframe=30d")
         detail_timeframe_partial = await client.get(
             f"/servers/{server.id}?region=fr-par&timeframe=7d",
             headers={"HX-Request": "true", "HX-Target": "availability-data"},
@@ -443,4 +500,36 @@ async def test_inactive_offer_is_hidden_from_public_rankings(settings, database)
 
     assert "EM-BERYLLIUM-1" not in hidden_response.text
     assert "EM-BERYLLIUM-1" not in unsupported_filter_response.text
+    await app.state.database.dispose()
+
+
+async def test_include_low_web_pages_and_partials(settings, database) -> None:
+    server = await seed_ranked_server(database)
+    app = create_app(settings)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        for include_low, regional_score, zone_score in [
+            ("false", "41.7%", "83.3%"),
+            ("true", "43.8%", "87.5%"),
+        ]:
+            params = {"include_low": include_low, "timeframe": "7d", "region": "fr-par"}
+            homepage = await client.get("/", params=params)
+            detail = await client.get(f"/servers/{server.id}", params=params)
+            rankings = await client.get("/partials/rankings", params=params)
+            history = await client.get(
+                f"/servers/{server.id}",
+                params=params,
+                headers={"HX-Request": "true", "HX-Target": "availability-data"},
+            )
+            for response in [homepage, detail, rankings, history]:
+                assert response.status_code == 200
+                assert regional_score in response.text
+                assert f"include_low={include_low}" in response.text
+            for response in [homepage, detail]:
+                assert 'role="switch" name="include_low"' in response.text
+                assert ('value="true" checked' in response.text) == (include_low == "true")
+            assert f'name="include_low" value="{include_low}"' in homepage.text
+            assert zone_score in detail.text
+            assert zone_score in history.text
+            assert f"include_low={include_low}" in rankings.headers["HX-Push-Url"]
     await app.state.database.dispose()

@@ -7,8 +7,8 @@
     <nav class="segmented" aria-label="Date range">
       {% for value, label in [('7d', '7 days'), ('30d', '30 days'), ('all', 'All')] %}
       <a class="{% if timeframe == value %}active{% endif %}"
-         href="?timeframe={{ value }}{% if selected_region %}&region={{ selected_region }}{% endif %}{% if selected_zone %}&zone={{ selected_zone }}{% endif %}"
-         hx-get="?timeframe={{ value }}{% if selected_region %}&region={{ selected_region }}{% endif %}{% if selected_zone %}&zone={{ selected_zone }}{% endif %}"
+         href="?timeframe={{ value }}&include_low={{ 'true' if include_low else 'false' }}{% if selected_region %}&region={{ selected_region }}{% endif %}{% if selected_zone %}&zone={{ selected_zone }}{% endif %}"
+         hx-get="?timeframe={{ value }}&include_low={{ 'true' if include_low else 'false' }}{% if selected_region %}&region={{ selected_region }}{% endif %}{% if selected_zone %}&zone={{ selected_zone }}{% endif %}"
          hx-target="#availability-data"
          hx-swap="outerHTML"
          hx-push-url="true"
@@ -19,7 +19,7 @@
 
   <section class="stat-grid" aria-label="Regional availability">
     {% for item in stats %}
-    <a class="stat-card{% if item.region == selected_region %} stat-card-active{% endif %}" href="?timeframe={{ timeframe }}&region={{ item.region }}">
+    <a class="stat-card{% if item.region == selected_region %} stat-card-active{% endif %}" href="?timeframe={{ timeframe }}&region={{ item.region }}&include_low={{ 'true' if include_low else 'false' }}">
       <span>{{ region_label(item.region) }}</span>
       <strong>{% if item.availability_percent is not none %}{{ '%.1f'|format(item.availability_percent) }}%{% else %}—{% endif %}</strong>
       <small>{{ item.valid_samples }} valid zone-hours · {{ '%.0f'|format(item.coverage_percent) }}% coverage</small>

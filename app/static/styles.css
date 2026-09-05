@@ -115,6 +115,12 @@ button, input, select { font: inherit; }
 .brand strong, .brand small { display: block; }
 .brand small { color: var(--muted); font-size: 11px; margin-top: 2px; }
 .header-actions { align-items: center; display: flex; gap: 14px; }
+.availability-switch { align-items: center; cursor: pointer; display: flex; gap: 9px; font-size: 13px; font-weight: 650; }
+.availability-switch input { appearance: none; background: var(--meter); border: 1px solid var(--muted); border-radius: 99px; cursor: pointer; flex-shrink: 0; height: 24px; margin: 0; padding: 3px; width: 42px; }
+.availability-switch input::before { background: var(--muted); border-radius: 50%; content: ""; display: block; height: 16px; transition: transform 120ms ease; width: 16px; }
+.availability-switch input:checked { background: var(--purple); border-color: var(--purple); }
+.availability-switch input:checked::before { background: var(--card); transform: translateX(18px); }
+.availability-switch input:focus-visible { outline: 3px solid var(--purple-bright); outline-offset: 3px; }
 .status-link, .back-link { color: var(--muted); font-size: 14px; font-weight: 650; text-decoration: none; }
 .status-link:hover, .back-link:hover { color: var(--purple); }
 .theme-toggle { align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 10px; color: var(--muted); cursor: pointer; display: flex; height: 38px; justify-content: center; padding: 0; width: 38px; }
@@ -266,7 +272,8 @@ footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 12px
 }
 
 @media (max-width: 760px) {
-  .site-header { padding: 14px 18px; }
+  .site-header { flex-wrap: wrap; gap: 16px; padding: 14px 18px; }
+  .header-actions { flex-wrap: wrap; }
   .status-link { display: none; }
   main { padding: 0 16px 48px; }
   .hero { align-items: start; grid-template-columns: 1fr; padding: 48px 0 36px; }

@@ -64,6 +64,7 @@ def parse_filters(
     max_hourly_price_eur: Annotated[str | None, Query()] = None,
     max_monthly_price_eur: Annotated[str | None, Query()] = None,
     category: Annotated[str | None, Query()] = None,
+    include_low: Annotated[bool, Query()] = False,
 ) -> RankingFilters:
     return RankingFilters(
         timeframe=timeframe,
@@ -81,6 +82,7 @@ def parse_filters(
         max_hourly_price_eur=max_hourly_price_eur or None,
         max_monthly_price_eur=max_monthly_price_eur or None,
         category=category or None,
+        include_low=include_low,
     )
 
 
@@ -109,6 +111,7 @@ async def index(
         "index.html",
         {
             "filters": filters,
+            "include_low": filters.include_low,
             "results": results,
             "categories": categories,
             "filter_bounds": filter_bounds,
@@ -154,8 +157,11 @@ async def server_detail(
     timeframe: Timeframe = "30d",
     region: str | None = None,
     zone: str | None = None,
+    include_low: bool = False,
 ) -> HTMLResponse:
-    detail = await dashboard.server_detail(session, server_type_id, timeframe, region, zone)
+    detail = await dashboard.server_detail(
+        session, server_type_id, timeframe, region, zone, include_low
+    )
     if detail is None:
         raise HTTPException(status_code=404, detail="Server type not found")
     server, stats, timeline, zone_histories = detail
@@ -176,6 +182,7 @@ async def server_detail(
             "timeframe": timeframe,
             "selected_region": selected_region,
             "selected_zone": zone,
+            "include_low": include_low,
         },
     )
 

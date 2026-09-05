@@ -14,7 +14,7 @@
       {% for item in servers %}
       <tr>
         <td data-label="Server">
-          <a class="server-name" href="/servers/{{ item.server_type.id }}?timeframe={{ filters.timeframe }}{% if filters.zone %}&zone={{ filters.zone }}{% elif filters.region %}&region={{ filters.region }}{% endif %}">{{ item.server_type.name }}</a>
+          <a class="server-name" href="/servers/{{ item.server_type.id }}?timeframe={{ filters.timeframe }}&include_low={{ 'true' if filters.include_low else 'false' }}{% if filters.zone %}&zone={{ filters.zone }}{% elif filters.region %}&region={{ filters.region }}{% endif %}">{{ item.server_type.name }}</a>
           <span class="category">{{ category_label(item.server_type.commercial_range) }}</span>
           {% if is_new %}<span class="new-badge">New</span>{% endif %}
         </td>

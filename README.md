@@ -5,7 +5,7 @@ A small public dashboard that records Scaleway Elastic Metal offer stock every h
 ## What it tracks
 
 - Hourly Elastic Metal offers in the Paris, Amsterdam, and Warsaw regions.
-- Strict availability: only an enabled offer with `stock=available` is available. `low`, `empty`, and disabled offers are not.
+- Availability defaults to enabled offers with `stock=available`. The switch at the top of each page can also count enabled `low` stock as available, updating rankings, percentages, and history charts. The choice carries through filters and navigation. Empty and disabled offers remain unavailable.
 - Regional availability: percentages are calculated from zone-hours across every configured zone. If a server is available in only one of two successfully checked zones, that regional hour contributes 50%.
 - The homepage lists each server configuration once. Its score combines all regions by default, or only the zones selected by the region and zone filters; 100% means every valid zone-hour in that scope was available.
 - Hardware specifications, Scaleway commercial range/category, current stock, and both hourly and monthly advertised prices.

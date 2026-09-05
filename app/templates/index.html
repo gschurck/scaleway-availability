@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Historical stock intelligence</p>
     <h1>Find the Elastic Metal<br>that is actually available.</h1>
-    <p class="lede">Hourly API observations, ranked by reliable full-stock availability across every region.</p>
+    <p class="lede">Hourly API observations, ranked by historical stock availability across every region.</p>
   </div>
   <div class="freshness{% if stale %} freshness-stale{% endif %}" role="status">
     <span class="pulse"></span>
@@ -31,7 +31,7 @@
       <p class="eyebrow">Narrow the catalog</p>
       <h2 id="filters-title">Filters</h2>
     </div>
-    <button class="text-button" type="reset" form="ranking-filters" onclick="window.location='/'">Reset all</button>
+    <button class="text-button" type="reset" form="ranking-filters" onclick="window.location='/?include_low=' + document.querySelector('.availability-switch input').checked">Reset all</button>
   </div>
   <form id="ranking-filters"
         class="filters"
@@ -39,8 +39,10 @@
         method="get"
         hx-get="/partials/rankings"
         hx-target="#rankings"
+        hx-sync="this:replace"
         hx-push-url="true"
         hx-trigger="input delay:300ms">
+    <input type="hidden" name="include_low" value="{{ 'true' if filters.include_low else 'false' }}">
     <label>
       <span>Sort by</span>
       <select name="sort_by">

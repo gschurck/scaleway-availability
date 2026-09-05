@@ -8,10 +8,11 @@
     <script src="{{ url_for('static', path='/theme.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
     <script src="{{ url_for('static', path='/htmx.min.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/availability.js') }}" defer></script>
   </head>
   <body hx-boost="true">
     <header class="site-header">
-      <a class="brand" href="/" aria-label="Metal Availability home">
+      <a class="brand" data-availability-link href="/?include_low={{ 'true' if include_low else 'false' }}" aria-label="Metal Availability home">
         <span class="brand-mark" aria-hidden="true">M</span>
         <span>
           <strong>Metal Availability</strong>
@@ -19,6 +20,22 @@
         </span>
       </a>
       <div class="header-actions">
+        <form class="availability-setting" action="{{ request.url.path }}" method="get"
+              hx-get="{{ '/partials/rankings' if filters is defined else request.url.path }}"
+              hx-target="{{ '#rankings' if filters is defined else '#availability-data' }}"
+              hx-swap="{{ 'innerHTML' if filters is defined else 'outerHTML' }}"
+              hx-trigger="change"
+              hx-sync="{{ '#ranking-filters:replace' if filters is defined else 'this:replace' }}"
+              hx-push-url="true">
+          {% for key, value in request.query_params.multi_items() if key != 'include_low' %}
+          <input type="hidden" name="{{ key }}" value="{{ value }}">
+          {% endfor %}
+          <label class="availability-switch">
+            <input type="checkbox" role="switch" name="include_low" value="true"{% if include_low %} checked{% endif %}>
+            <span>Count low stock as available</span>
+          </label>
+          <noscript><button type="submit">Apply</button></noscript>
+        </form>
         <a class="status-link" href="/healthz" hx-boost="false">System status</a>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark theme" title="Switch to dark theme">
           <span class="theme-icon theme-icon-dark" aria-hidden="true">☾</span>

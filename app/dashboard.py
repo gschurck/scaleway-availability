@@ -7,8 +7,9 @@ from decimal import Decimal, InvalidOperation
 from math import ceil
 from typing import Literal
 
-from sqlalchemy import Integer, Select, and_, func, select
+from sqlalchemy import Integer, Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.config import Settings
 from app.locations import category_label, region_for_zone, region_label
@@ -69,6 +70,7 @@ class RankingFilters:
     max_hourly_price_eur: str | None = None
     max_monthly_price_eur: str | None = None
     category: str | None = None
+    include_low: bool = False
 
 
 @dataclass(frozen=True)
@@ -136,6 +138,19 @@ class FilterBounds:
 class DashboardService:
     def __init__(self, settings: Settings):
         self.settings = settings
+
+    @staticmethod
+    def _available_observation(include_low: bool) -> ColumnElement[bool]:
+        available = AvailabilityObservation.is_available.is_(True)
+        if include_low:
+            return or_(
+                available,
+                and_(
+                    AvailabilityObservation.enabled.is_(True),
+                    AvailabilityObservation.stock == "low",
+                ),
+            )
+        return available
 
     async def categories(self, session: AsyncSession) -> list[tuple[str, str]]:
         values = (
@@ -226,6 +241,7 @@ class DashboardService:
         timeframe: Timeframe,
         region: str | None,
         zone: str | None,
+        include_low: bool = False,
     ) -> (
         tuple[
             ServerType,
@@ -254,12 +270,14 @@ class DashboardService:
             await self._rank_server(
                 session,
                 server,
-                RankingFilters(timeframe=timeframe, region=item_region),
+                RankingFilters(timeframe=timeframe, region=item_region, include_low=include_low),
                 item_region,
             )
             for item_region in location_regions
         ]
-        timeline = await self._timeline(session, server.id, timeframe, selected_region, zone=zone)
+        timeline = await self._timeline(
+            session, server.id, timeframe, selected_region, zone=zone, include_low=include_low
+        )
         region_zones = [
             item for item in self.settings.zones if region_for_zone(item) == selected_region
         ]
@@ -273,6 +291,7 @@ class DashboardService:
                         timeframe=timeframe,
                         region=selected_region,
                         zone=item_zone,
+                        include_low=include_low,
                     ),
                     selected_region,
                     include_inactive=True,
@@ -283,6 +302,7 @@ class DashboardService:
                     timeframe,
                     selected_region,
                     zone=item_zone,
+                    include_low=include_low,
                 ),
             )
             for item_zone in region_zones
@@ -353,7 +373,7 @@ class DashboardService:
             return await self._rank_server(session, server, filters, region_for_zone(filters.zone))
         cutoff = cutoff_for(filters.timeframe)
         available, valid, first, valid_hours = await self._scope_stats(
-            session, server.id, zones, cutoff
+            session, server.id, zones, cutoff, filters.include_low
         )
         expected = self._expected_samples(first, cutoff) * len(zones)
         availability = (available / valid * 100) if valid else None
@@ -388,7 +408,9 @@ class DashboardService:
             stats_query = (
                 select(
                     func.count(AvailabilityObservation.id),
-                    func.sum(func.cast(AvailabilityObservation.is_available, type_=Integer)),
+                    func.sum(
+                        func.cast(self._available_observation(filters.include_low), type_=Integer)
+                    ),
                     func.min(AvailabilityObservation.observed_at),
                 )
                 .join(OfferLocation)
@@ -408,7 +430,7 @@ class DashboardService:
         else:
             region_zones = self._region_zones(region)
             available, valid, first, eligibility_samples = await self._scope_stats(
-                session, server.id, region_zones, cutoff
+                session, server.id, region_zones, cutoff, filters.include_low
             )
             expected = self._expected_samples(first, cutoff) * len(region_zones)
         availability = (available / valid * 100) if valid else None
@@ -441,6 +463,7 @@ class DashboardService:
         server_type_id: int,
         zones: list[str],
         cutoff: datetime | None,
+        include_low: bool = False,
     ) -> tuple[int, int, datetime | None, int]:
         first_observed = ensure_utc(
             await session.scalar(
@@ -479,7 +502,7 @@ class DashboardService:
             .where(
                 OfferLocation.server_type_id == server_type_id,
                 OfferLocation.zone.in_(zones),
-                AvailabilityObservation.is_available.is_(True),
+                self._available_observation(include_low),
             )
             .group_by(AvailabilityObservation.collection_run_id, OfferLocation.zone)
             .subquery()
@@ -548,14 +571,17 @@ class DashboardService:
         timeframe: Timeframe,
         region: str,
         zone: str | None,
+        include_low: bool = False,
     ) -> list[TimelinePoint]:
         cutoff = cutoff_for(timeframe)
         if not zone:
-            return await self._regional_timeline(session, server_type_id, timeframe, region, cutoff)
+            return await self._regional_timeline(
+                session, server_type_id, timeframe, region, cutoff, include_low
+            )
         query = (
             select(
                 AvailabilityObservation.observed_at,
-                AvailabilityObservation.is_available,
+                self._available_observation(include_low),
                 AvailabilityObservation.stock,
             )
             .join(OfferLocation)
@@ -573,13 +599,7 @@ class DashboardService:
                 TimelinePoint(
                     timestamp=ensure_utc(row[0]) or datetime.now(UTC),
                     label=(ensure_utc(row[0]) or datetime.now(UTC)).strftime("%d %b %H:%M UTC"),
-                    state=(
-                        "available"
-                        if row[1]
-                        else "low"
-                        if row[2] == "low"
-                        else "unavailable"
-                    ),
+                    state=("available" if row[1] else "low" if row[2] == "low" else "unavailable"),
                     percent=100.0 if row[1] else 0.0,
                 )
                 for row in rows
@@ -613,6 +633,7 @@ class DashboardService:
         timeframe: Timeframe,
         region: str,
         cutoff: datetime | None,
+        include_low: bool = False,
     ) -> list[TimelinePoint]:
         zones = self._region_zones(region)
         first_observed = ensure_utc(
@@ -655,7 +676,7 @@ class DashboardService:
                     .where(
                         OfferLocation.server_type_id == server_type_id,
                         OfferLocation.region == region,
-                        AvailabilityObservation.is_available.is_(True),
+                        self._available_observation(include_low),
                         AvailabilityObservation.observed_at >= start,
                     )
                     .distinct()

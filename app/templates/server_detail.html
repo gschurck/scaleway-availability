@@ -2,7 +2,7 @@
 {% block title %}{{ server.name }} availability{% endblock %}
 {% block content %}
 <div class="detail-shell">
-  <a class="back-link" href="/">← Back to rankings</a>
+  <a class="back-link" data-availability-link href="/?include_low={{ 'true' if include_low else 'false' }}">← Back to rankings</a>
   <header class="detail-header">
     <div>
       <p class="eyebrow">{{ category_label(server.commercial_range) }}</p>
