@@ -1,3 +1,4 @@
+{% from "partials/time_axis.html" import time_axis %}
 <section id="availability-data" class="availability-data" aria-live="polite">
   <div class="availability-toolbar">
     <div>
@@ -40,6 +41,7 @@
       <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.state == 'low' %}low stock{% elif point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
       {% endfor %}
     </div>
+    {{ time_axis(timeline, timeframe) }}
     <div class="legend">
       {% if selected_zone %}<span class="available">Available</span><span class="low">Low stock</span>
       {% else %}<span class="available">All zones available</span><span class="partial">Some zones available</span>{% endif %}
@@ -86,6 +88,7 @@
           <span class="timeline-point timeline-{{ point.state }}" tabindex="0" title="{{ point.label }}: {% if point.state == 'low' %}low stock{% elif point.percent is none %}unknown{% else %}{{ '%.1f'|format(point.percent) }}% available{% endif %}"></span>
           {% endfor %}
         </div>
+        {{ time_axis(item.timeline, timeframe) }}
         <div class="zone-meta">
           <span>{{ item.stats.available_samples }}/{{ item.stats.valid_samples }} available observations</span>
           <span>{{ '%.0f'|format(item.stats.coverage_percent) }}% coverage</span>

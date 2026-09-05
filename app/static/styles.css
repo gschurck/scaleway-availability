@@ -236,8 +236,16 @@ tbody tr:hover { background: var(--row-hover); }
 .segmented { background: var(--segmented); border-radius: 9px; display: flex; padding: 3px; }
 .segmented a { border-radius: 7px; color: var(--muted); font-size: 12px; font-weight: 700; padding: 7px 11px; text-decoration: none; }
 .segmented a.active { background: var(--segment-active); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-.timeline { align-items: stretch; display: flex; gap: 2px; height: 150px; margin-top: 28px; overflow: hidden; }
-.timeline-point { background: var(--timeline-unknown); border-radius: 3px; flex: 1 1 3px; min-width: 2px; outline: none; }
+.timeline { align-items: stretch; display: flex; height: 150px; margin-top: 28px; overflow: hidden; }
+.timeline-point { background: var(--timeline-unknown); border-radius: 3px; flex: 1 1 0; min-width: 0; outline: none; }
+.time-axis { border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; height: 42px; margin-top: 8px; position: relative; }
+.time-axis-label { padding-top: 7px; position: absolute; text-align: center; transform: translateX(-50%); white-space: nowrap; }
+.time-axis-label::before { background: var(--line); content: ""; height: 4px; left: 50%; position: absolute; top: 0; width: 1px; }
+.time-axis-label span { display: block; line-height: 1.5; }
+.time-axis-start { text-align: left; transform: none; }
+.time-axis-start::before { left: 0; }
+.time-axis-end { text-align: right; transform: translateX(-100%); }
+.time-axis-end::before { left: 100%; }
 .timeline-point:focus { box-shadow: 0 0 0 2px var(--purple); z-index: 1; }
 .timeline-available { background: var(--green); }
 .timeline-partial, .timeline-low { background: var(--orange); }
@@ -258,7 +266,7 @@ tbody tr:hover { background: var(--row-hover); }
 .zone-score strong, .zone-score small { display: block; }
 .zone-score strong { font-size: 27px; }
 .zone-score small { color: var(--muted); margin-top: 2px; }
-.zone-timeline { align-items: stretch; display: flex; gap: 2px; height: 58px; margin-top: 20px; overflow: hidden; }
+.zone-timeline { align-items: stretch; display: flex; height: 58px; margin-top: 20px; overflow: hidden; }
 .zone-meta { color: var(--muted); display: flex; font-size: 10px; justify-content: space-between; margin-top: 9px; }
 .zone-empty { align-items: center; background: var(--zone-empty); border-radius: 9px; color: var(--muted); display: flex; font-size: 12px; height: 58px; justify-content: center; margin-top: 20px; padding: 10px; text-align: center; }
 .detail-grid { display: grid; gap: 18px; grid-template-columns: repeat(4, 1fr); margin-top: 24px; }

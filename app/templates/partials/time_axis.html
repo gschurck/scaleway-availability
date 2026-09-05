@@ -1,0 +1,18 @@
+{% macro time_axis(points, timeframe) %}
+{% if points %}
+{% set count = points|length %}
+{% set indices = [0] if count == 1 else [0, count - 1] if count == 2 else [0, (count - 1) // 2, count - 1] %}
+<div class="time-axis" aria-label="Time axis (UTC)">
+  {% for index in indices %}
+  {% set point = points[index] %}
+  <time class="time-axis-label{% if count > 1 and loop.first %} time-axis-start{% elif count > 1 and loop.last %} time-axis-end{% endif %}"
+        datetime="{{ point.timestamp.isoformat() }}"
+        title="{{ point.label }}"
+        style="left: {{ 50 if count == 1 else 0 if loop.first else 100 if loop.last else (index + 0.5) / count * 100 }}%">
+    <span>{{ point.timestamp.strftime('%d %b %Y' if timeframe == 'all' else '%d %b') }}</span>
+    {% if timeframe != 'all' %}<span>{{ point.timestamp.strftime('%H:%M') }} UTC</span>{% endif %}
+  </time>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
